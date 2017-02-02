@@ -78,19 +78,19 @@ class EC2Cluster(FlintrockCluster):
 
     @property
     def master_ip(self):
-        return self.master_instance.public_ip_address
+        return self.master_instance.private_ip_address
 
     @property
     def master_host(self):
-        return self.master_instance.public_dns_name
+        return self.master_instance.private_dns_name
 
     @property
     def slave_ips(self):
-        return [i.public_ip_address for i in self.slave_instances]
+        return [i.private_ip_address for i in self.slave_instances]
 
     @property
     def slave_hosts(self):
-        return [i.public_dns_name for i in self.slave_instances]
+        return [i.private_dns_name for i in self.slave_instances]
 
     @property
     def num_masters(self):
@@ -297,12 +297,12 @@ class EC2Cluster(FlintrockCluster):
                         {'Key': 'flintrock-role', 'Value': 'slave'},
                         {'Key': 'Name', 'Value': '{c}-slave'.format(c=self.name)}]))
 
-            existing_slaves = {i.public_ip_address for i in self.slave_instances}
+            existing_slaves = {i.private_ip_address for i in self.slave_instances}
 
             self.slave_instances += new_slave_instances
             self.wait_for_state('running')
 
-            new_slaves = {i.public_ip_address for i in self.slave_instances} - existing_slaves
+            new_slaves = {i.private_ip_address for i in self.slave_instances} - existing_slaves
 
             super().add_slaves(
                 user=user,
@@ -440,13 +440,6 @@ def check_network_config(*, region_name: str, vpc_id: str, subnet_id: str):
             "Flintrock requires DNS hostnames to be enabled.\n"
             "See: https://github.com/nchammas/flintrock/issues/43"
             .format(v=vpc_id)
-        )
-    if not ec2.Subnet(subnet_id).map_public_ip_on_launch:
-        raise ConfigurationNotSupported(
-            "{s} does not auto-assign public IP addresses. "
-            "Flintrock requires public IP addresses.\n"
-            "See: https://github.com/nchammas/flintrock/issues/14"
-            .format(s=subnet_id)
         )
 
 
