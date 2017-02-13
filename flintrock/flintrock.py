@@ -11,6 +11,8 @@ import urllib.request
 import warnings
 
 # External modules
+from datetime import datetime
+
 import click
 import yaml
 # We import botocore here so we can catch when the user tries to
@@ -225,6 +227,7 @@ def cli(cli_context, config, provider):
               help="Additional security groups names to assign to the instances. "
                    "You can specify this option multiple times.")
 @click.option('--ec2-spot-price', type=float)
+@click.option('--ec2-cluster-timeout-h', type=float)
 @click.option('--ec2-vpc-id', default='', help="Leave empty for default VPC.")
 @click.option('--ec2-subnet-id', default='')
 @click.option('--ec2-instance-profile-name', default='')
@@ -259,6 +262,7 @@ def launch(
         ec2_user,
         ec2_security_groups,
         ec2_spot_price,
+        ec2_cluster_timeout_h,
         ec2_vpc_id,
         ec2_subnet_id,
         ec2_instance_profile_name,
@@ -349,6 +353,7 @@ def launch(
             user=ec2_user,
             security_groups=ec2_security_groups,
             spot_price=ec2_spot_price,
+            ec2_cluster_timeout_h=ec2_cluster_timeout_h,
             vpc_id=ec2_vpc_id,
             subnet_id=ec2_subnet_id,
             instance_profile_name=ec2_instance_profile_name,
@@ -618,6 +623,7 @@ def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes):
               help="Path to SSH .pem file for accessing nodes.")
 @click.option('--ec2-user')
 @click.option('--ec2-spot-price', type=float)
+@click.option('--ec2-cluster-timeout-h', type=float)
 @click.option('--assume-yes/--no-assume-yes', default=False)
 @click.pass_context
 def add_slaves(
@@ -629,6 +635,7 @@ def add_slaves(
         ec2_identity_file,
         ec2_user,
         ec2_spot_price,
+        ec2_cluster_timeout_h,
         assume_yes):
     """
     Add slaves to an existing cluster.
@@ -656,6 +663,7 @@ def add_slaves(
         identity_file = ec2_identity_file
         provider_options = {
             'spot_price': ec2_spot_price,
+            'cluster-timeout-h': ec2_cluster_timeout_h,
         }
     else:
         raise UnsupportedProviderError(provider)

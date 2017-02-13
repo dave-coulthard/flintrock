@@ -7,6 +7,7 @@ import base64
 import os
 from collections import namedtuple
 from datetime import datetime
+from datetime import timedelta
 
 # External modules
 import boto3
@@ -234,6 +235,7 @@ class EC2Cluster(FlintrockCluster):
             identity_file: str,
             num_slaves: int,
             spot_price: float,
+            cluster_timeout_h: float,
             assume_yes: bool):
         security_group_ids = [
             group['GroupId']
@@ -268,10 +270,12 @@ class EC2Cluster(FlintrockCluster):
 
         self.add_slaves_check()
         try:
+            valid_until = datetime.now() + timedelta(h=cluster_timeout_h)
             new_slave_instances = _create_instances(
                 num_instances=num_slaves,
                 region=self.region,
                 spot_price=spot_price,
+                valid_until=valid_until,
                 ami=self.master_instance.image_id,
                 assume_yes=assume_yes,
                 key_name=self.master_instance.key_name,
@@ -661,6 +665,7 @@ def _create_instances(
         num_instances,
         region,
         spot_price,
+        valid_until,
         ami,
         assume_yes,
         key_name,
@@ -688,6 +693,7 @@ def _create_instances(
             client = ec2.meta.client
             spot_requests = client.request_spot_instances(
                 SpotPrice=str(spot_price),
+                ValidUntil=valid_until,
                 InstanceCount=num_instances,
                 LaunchSpecification={
                     'ImageId': ami,
@@ -803,6 +809,7 @@ def launch(
         user,
         security_groups,
         spot_price=None,
+        cluster_timeout_h=None,
         vpc_id,
         subnet_id,
         instance_profile_name,
@@ -869,10 +876,12 @@ def launch(
         user_data = ''
 
     try:
+        valid_until = datetime.now() + timedelta(h=cluster_timeout_h)
         cluster_instances = _create_instances(
             num_instances=num_instances,
             region=region,
             spot_price=spot_price,
+            valid_until=valid_until,
             ami=ami,
             assume_yes=assume_yes,
             key_name=key_name,
