@@ -270,7 +270,7 @@ class EC2Cluster(FlintrockCluster):
 
         self.add_slaves_check()
         try:
-            valid_until = datetime.now() + timedelta(h=cluster_timeout_h)
+            valid_until = datetime.now() + timedelta(h=cluster_timeout_h) if cluster_timeout_h else None
             new_slave_instances = _create_instances(
                 num_instances=num_slaves,
                 region=self.region,
@@ -876,7 +876,7 @@ def launch(
         user_data = ''
 
     try:
-        valid_until = datetime.now() + timedelta(h=cluster_timeout_h)
+        valid_until = datetime.now() + timedelta(h=cluster_timeout_h) if cluster_timeout_h else None
         cluster_instances = _create_instances(
             num_instances=num_instances,
             region=region,
