@@ -353,7 +353,7 @@ def launch(
             user=ec2_user,
             security_groups=ec2_security_groups,
             spot_price=ec2_spot_price,
-            ec2_cluster_timeout_h=ec2_cluster_timeout_h,
+            cluster_timeout_h=ec2_cluster_timeout_h,
             vpc_id=ec2_vpc_id,
             subnet_id=ec2_subnet_id,
             instance_profile_name=ec2_instance_profile_name,
