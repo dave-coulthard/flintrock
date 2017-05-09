@@ -6,6 +6,7 @@ import posixpath
 import shlex
 import sys
 import time
+import logging
 from concurrent.futures import FIRST_EXCEPTION
 
 # External modules
@@ -23,6 +24,9 @@ else:
     THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
 SCRIPTS_DIR = os.path.join(THIS_DIR, 'scripts')
+
+
+logger = logging.getLogger('flintrock.core')
 
 
 class StorageDirs:
@@ -140,8 +144,8 @@ class FlintrockCluster:
             manifest_raw = ssh_check_output(
                 client=master_ssh_client,
                 command="""
-                    cat /home/{u}/.flintrock-manifest.json
-                """.format(u=shlex.quote(user)))
+                    cat "$HOME/.flintrock-manifest.json"
+                """)
             # TODO: Would it be better if storage (ephemeral and otherwise) was
             #       implemented as a Flintrock service and tracked in the manifest?
             ephemeral_dirs_raw = ssh_check_output(
@@ -457,7 +461,7 @@ def generate_template_mapping(
         'hadoop_version': hadoop_version,
         'hadoop_short_version': '.'.join(hadoop_version.split('.')[:2]),
         'spark_version': spark_version,
-        'spark_short_version': '.'.join(spark_version.split('.')[:2]),
+        'spark_short_version': '.'.join(spark_version.split('.')[:2]) if '.' in spark_version else spark_version,
 
         'hadoop_root_dir': hadoop_root_dir,
         'hadoop_ephemeral_dirs': hadoop_ephemeral_dirs,
@@ -530,7 +534,7 @@ def ensure_java8(client: paramiko.client.SSHClient):
     java_major_version = get_java_major_version(client)
 
     if not java_major_version or java_major_version < (1, 8):
-        print("[{h}] Installing Java 1.8...".format(h=host))
+        logger.info("[{h}] Installing Java 1.8...".format(h=host))
 
         ssh_check_output(
             client=client,
@@ -570,10 +574,10 @@ def setup_node(
         command="""
             set -e
 
-            echo {private_key} > ~/.ssh/id_rsa
-            echo {public_key} >> ~/.ssh/authorized_keys
+            echo {private_key} > "$HOME/.ssh/id_rsa"
+            echo {public_key} >> "$HOME/.ssh/authorized_keys"
 
-            chmod 400 ~/.ssh/id_rsa
+            chmod 400 "$HOME/.ssh/id_rsa"
         """.format(
             private_key=shlex.quote(cluster.ssh_key_pair.private),
             public_key=shlex.quote(cluster.ssh_key_pair.public)))
@@ -583,7 +587,7 @@ def setup_node(
             localpath=os.path.join(SCRIPTS_DIR, 'setup-ephemeral-storage.py'),
             remotepath='/tmp/setup-ephemeral-storage.py')
 
-    print("[{h}] Configuring ephemeral storage...".format(h=host))
+    logger.info("[{h}] Configuring ephemeral storage...".format(h=host))
     # TODO: Print some kind of warning if storage is large, since formatting
     #       will take several minutes (~4 minutes for 2TB).
     storage_dirs_raw = ssh_check_output(
@@ -644,11 +648,11 @@ def provision_cluster(
         ssh_check_output(
             client=master_ssh_client,
             command="""
-                echo {m} > /home/{u}/.flintrock-manifest.json
-                chmod go-rw /home/{u}/.flintrock-manifest.json
+                echo {m} > "$HOME/.flintrock-manifest.json"
+                chmod go-rw "$HOME/.flintrock-manifest.json"
             """.format(
-                m=shlex.quote(json.dumps(manifest, indent=4, sort_keys=True)),
-                u=shlex.quote(user)))
+                m=shlex.quote(json.dumps(manifest, indent=4, sort_keys=True))
+            ))
 
         for service in services:
             service.configure_master(
@@ -806,7 +810,7 @@ def run_command_node(*, user: str, host: str, identity_file: str, command: tuple
         host=host,
         identity_file=identity_file)
 
-    print("[{h}] Running command...".format(h=host))
+    logger.info("[{h}] Running command...".format(h=host))
 
     command_str = ' '.join(command)
 
@@ -815,7 +819,7 @@ def run_command_node(*, user: str, host: str, identity_file: str, command: tuple
             client=ssh_client,
             command=command_str)
 
-    print("[{h}] Command complete.".format(h=host))
+    logger.info("[{h}] Command complete.".format(h=host))
 
 
 def copy_file_node(
@@ -850,15 +854,15 @@ def copy_file_node(
             raise Exception("Remote directory does not exist: {d}".format(d=remote_dir))
 
         with ssh_client.open_sftp() as sftp:
-            print("[{h}] Copying file...".format(h=host))
+            logger.info("[{h}] Copying file...".format(h=host))
 
             sftp.put(localpath=local_path, remotepath=remote_path)
 
-            print("[{h}] Copy complete.".format(h=host))
+            logger.info("[{h}] Copy complete.".format(h=host))
 
 
 # This is necessary down here since we have a circular import dependency between
 # core.py and services.py. I've thought about how to remove this circular dependency,
 # but for now this seems like what we need to go with.
 # Flintrock modules
-from .services import HDFS, Spark  # Used by start_cluster()
+from .services import HDFS, Spark  # Used by start_cluster() # noqa
